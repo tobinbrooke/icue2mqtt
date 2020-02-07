@@ -34,6 +34,8 @@ there is currently no installers. The repository will need to be cloned and buil
 
 You will need a MQTT broker. This has been tested with Mosquitto broker on Hass.io
 Discovered devices will be listed under integrations>MQTT:<IP> Each iCUE device will be named with the device type and have the entity ID of light.device_type_with_spaces_as_underscores.
+  
+![](images/icueLightInHA.png)
 
 *Tested iCUE Devices*
 
