@@ -3,3 +3,6 @@
 ################################################################################
 
 /.vs/icue2mqtt/v16/Server/sqlite3
+/icue2mqtt/obj
+/IcueHelper/obj
+/.vs/icue2mqtt
