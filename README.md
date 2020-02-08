@@ -1,4 +1,4 @@
-# icue2mqtt
+# icue2mqtt [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
 Corsair iCUE MQTT client for Home Assistant
 
 *Project Description*
@@ -34,6 +34,8 @@ there is currently no installers. The repository will need to be cloned and buil
 
 You will need a MQTT broker. This has been tested with Mosquitto broker on Hass.io
 Discovered devices will be listed under integrations>MQTT:<IP> Each iCUE device will be named with the device type and have the entity ID of light.device_type_with_spaces_as_underscores.
+  
+![](images/icueLightInHA.png)
 
 *Tested iCUE Devices*
 
@@ -63,7 +65,7 @@ Please feel free to give feedback or feature requests
 *Thanks*
 
 https://dotnetcoretutorials.com/2019/09/19/creating-windows-services-in-net-core-part-1-the-microsoft-way/
-https://github.com/eclipse/paho.mqtt.m2mqtt/blob/master/README.md
+https://github.com/eclipse/paho.mqtt.m2mqtt
 https://github.com/AndrewBabbitt97/CUESDK.NET
 
 
