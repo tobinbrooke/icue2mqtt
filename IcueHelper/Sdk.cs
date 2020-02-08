@@ -184,6 +184,11 @@ namespace IcueHelper
             return true;
         }
 
+        public CorsairError CorsairGetLastError()
+        {
+            return CUESDK.CorsairGetLastError();
+        }
+
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
         /// </summary>

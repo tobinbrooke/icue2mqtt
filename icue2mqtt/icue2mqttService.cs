@@ -1,8 +1,11 @@
-﻿using icue2mqtt.Models;
+﻿using Corsair.CUE.SDK;
+using icue2mqtt.Models;
 using IcueHelper;
 using IcueHelper.Models;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.ServiceProcess;
 using System.Text;
@@ -38,19 +41,7 @@ namespace icue2mqtt
 
         private static Task clientTask;
 
-        /// <summary>
-        /// Logs the specified log message.
-        /// </summary>
-        /// <param name="logMessage">The log message.</param>
-        private void Log(string logMessage)
-        {
-            if (_logFileLocation == null || _logFileLocation.Trim().Equals(""))
-            {
-                return;
-            }
-            Directory.CreateDirectory(Path.GetDirectoryName(_logFileLocation));
-            File.AppendAllText(_logFileLocation, DateTime.UtcNow.ToString() + " : " + logMessage + Environment.NewLine);
-        }
+        private static EventLog logger;
 
         /// <summary>
         /// Called when service starts and is debuggable.
@@ -58,13 +49,15 @@ namespace icue2mqtt
         /// <param name="args">The startup arguments.</param>
         public void OnStartPublic(string[] args)
         {
+            LogInformation("Starting");
+
             _logFileLocation = Properties.Resources.logPath;
 
-            Log("Starting");
-            
+            setupLogging();
+
             if (Properties.Resources.mqttUrl == null || Properties.Resources.mqttUrl.Trim().Equals(""))
             {
-                Log("No MQTT broker URL. Stopping");
+                LogInformation("No MQTT broker URL. Stopping");
                 base.Stop();
                 return;
             }
@@ -76,7 +69,7 @@ namespace icue2mqtt
 
         private void connectMqttAndDevices()
         {
-            Log("Connecting to MQTT broker");
+            LogInformation("Connecting to MQTT broker");
             Client = new MqttClient(Properties.Resources.mqttUrl);
             Client.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
             string clientId = Guid.NewGuid().ToString();
@@ -90,10 +83,11 @@ namespace icue2mqtt
             {
                 Client.Connect(clientId);
             }
+            Client.ConnectionClosed += client_ConnectionClosedEvent;
 
             if (Client.IsConnected)
             {
-                Log("Connected to MQTT broker");
+                LogInformation("Connected to MQTT broker");
                 IcueSdk = new Sdk(false);
                 Device[] devices = IcueSdk.ListDevices();
                 for (int i = 0; i < devices.Length; i++)
@@ -101,7 +95,7 @@ namespace icue2mqtt
                     MqttIcueDevice mqttIcueDevice = MqttIcueDeviceList.AddIcueDevice(devices[i]);
                     if (mqttIcueDevice != null)
                     {
-                        Log(String.Format("Publishing device {0}", mqttIcueDevice.IcueDevice.CorsairDevice.model));
+                        LogInformation(String.Format("Publishing device {0}", mqttIcueDevice.IcueDevice.CorsairDevice.model));
                         Client.Publish(
                             mqttIcueDevice.DiscoveryTopic,
                             Encoding.UTF8.GetBytes(mqttIcueDevice.Discovery.ToJson()),
@@ -115,9 +109,19 @@ namespace icue2mqtt
             }
             else
             {
-                Log("Failed to connect to MQTT broker. Stopping service");
+                LogInformation("Failed to connect to MQTT broker. Stopping service");
                 base.Stop();
             }
+        }
+
+        /// <summary>
+        /// Handles the ConnectionClosedEvent event of the client control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="System.EventArgs" /> instance containing the event data.</param>
+        static void client_ConnectionClosedEvent(object sender, EventArgs e)
+        {
+            LogInformation(String.Format("{0} - MQTT client closed", new DateTime()));
         }
 
         /// <summary>
@@ -144,17 +148,32 @@ namespace icue2mqtt
                     if (state.State.Equals("ON"))
                     {
                         IcueSdk.SetDeviceColor(mqttIcueDevice.IcueDevice, mqttIcueDevice.LastR, mqttIcueDevice.LastG, mqttIcueDevice.LastB);
+                        CorsairError error = IcueSdk.CorsairGetLastError();
+                        if (error != CorsairError.CE_Success)
+                        {
+                            LogError("SDK error setting device to ON", new Exception(error.ToString()));
+                        }
                     }
                     else
                     {
                         mqttIcueDevice.SetOffState();
                         IcueSdk.SetDeviceColor(mqttIcueDevice.IcueDevice, 0, 0, 0);
+                        CorsairError error = IcueSdk.CorsairGetLastError();
+                        if (error != CorsairError.CE_Success)
+                        {
+                            LogError("SDK error setting device to OFF", new Exception(error.ToString()));
+                        }
                     }
                     return;
                 }
                 else
                 {
                     IcueSdk.SetDeviceColor(mqttIcueDevice.IcueDevice, state.Color.R, state.Color.G, state.Color.B);
+                    CorsairError error = IcueSdk.CorsairGetLastError();
+                    if (error != CorsairError.CE_Success)
+                    {
+                        LogError("SDK error setting device colo", new Exception(error.ToString()));
+                    }
                 }
                 return;
             }
@@ -184,7 +203,7 @@ namespace icue2mqtt
         /// </summary>
         public void OnStopPublic()
         {
-            Log("Stopping");
+            LogInformation("Stopping");
             if (Client != null && Client.IsConnected)
             {
                 Client.Disconnect();
@@ -193,7 +212,7 @@ namespace icue2mqtt
             {
                 IcueSdk.Dispose();
             }
-            if (clientTask != null)
+            if (clientTask != null && clientTask.IsCompleted)
             {
                 clientTask.Dispose();
             }
@@ -207,8 +226,100 @@ namespace icue2mqtt
 
         protected override void OnPause()
         {
-            Log("Pausing");
+            LogInformation("Pausing");
             base.OnPause();
+        }
+
+        private static void setupLogging()
+        {
+
+            // Create the source, if it does not already exist.
+            if (!EventLog.SourceExists("icue2mqtt"))
+            {
+                //An event log source should not be created and immediately used.
+                //There is a latency time to enable the source, it should be created
+                //prior to executing the application that uses the source.
+                //Execute this sample a second time to use the new source.
+                EventLog.CreateEventSource("icue2mqtt", "icue2mqttLog");
+            }
+
+            // Create an EventLog instance and assign its source.
+            logger = new EventLog();
+            logger.Source = "icue2mqtt";
+        }
+
+        /// <summary>
+        /// Logs the specified log message.
+        /// </summary>
+        /// <param name="logMessage">The log message.</param>
+        private static void LogInformation(string logMessage)
+        {
+            try
+            {
+                if (logger != null)
+                {
+                    logger.WriteEntry(logMessage, EventLogEntryType.Information);
+                }
+                else
+                {
+                    logToFile(logMessage, null);
+                }
+            }
+            catch(Exception ex)
+            {
+                logToFile(logMessage, ex);
+            }
+        }
+
+        /// <summary>
+        /// Logs the error.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="ex">The ex.</param>
+        private static void LogError(string message, Exception ex)
+        {
+            try
+            {
+                if (logger != null)
+                {
+                    logger.WriteEntry(
+                        string.Format("{0}: {1} {2}{3}", message, ex.Message, Environment.NewLine, ex.StackTrace), 
+                        EventLogEntryType.Error);
+                }
+                else
+                {
+                    logToFile(message, ex);
+                }
+            }
+            catch (Exception exception)
+            {
+                logToFile(message, exception);
+            }
+        }
+
+        /// <summary>
+        /// Logs to file.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="ex">The ex.</param>
+        private static void logToFile(string message, Exception ex)
+        {
+
+            if (_logFileLocation == null || _logFileLocation.Trim().Equals(""))
+            {
+                return;
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(_logFileLocation));
+            if (ex != null)
+            {
+                File.AppendAllText(_logFileLocation,
+                    string.Format("{0} : {1} - {2}{3}", DateTime.UtcNow.ToString(), message, ex.Message, Environment.NewLine));
+            }
+            else
+            {
+                File.AppendAllText(_logFileLocation,
+                    string.Format("{0} : {1}{2}", DateTime.UtcNow.ToString(), message, Environment.NewLine));
+            }
         }
     }
 }

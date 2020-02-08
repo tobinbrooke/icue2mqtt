@@ -8,3 +8,5 @@
 /.vs/icue2mqtt
 /icue2mqtt/bin/Debug/netcoreapp3.1
 /IcueHelper/bin/Debug/netstandard2.1
+/icue2mqtt/bin/Release/netcoreapp3.1/win-x64
+/IcueHelper/bin/Release/netstandard2.1
