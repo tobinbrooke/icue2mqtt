@@ -65,7 +65,7 @@ Please feel free to give feedback or feature requests
 *Thanks*
 
 https://dotnetcoretutorials.com/2019/09/19/creating-windows-services-in-net-core-part-1-the-microsoft-way/
-https://github.com/eclipse/paho.mqtt.m2mqtt/blob/master/README.md
+https://github.com/eclipse/paho.mqtt.m2mqtt
 https://github.com/AndrewBabbitt97/CUESDK.NET
 
 
