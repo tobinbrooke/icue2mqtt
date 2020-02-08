@@ -39,8 +39,14 @@ namespace icue2mqtt
         /// </value>
         private static MqttClient Client { get; set; }
 
+        /// <summary>
+        /// The client task
+        /// </summary>
         private static Task clientTask;
 
+        /// <summary>
+        /// The logger
+        /// </summary>
         private static EventLog logger;
 
         /// <summary>
@@ -67,6 +73,9 @@ namespace icue2mqtt
             clientTask.Start();
         }
 
+        /// <summary>
+        /// Connects the MQTT and devices.
+        /// </summary>
         private void connectMqttAndDevices()
         {
             LogInformation("Connecting to MQTT broker");
@@ -192,6 +201,10 @@ namespace icue2mqtt
                   false);
         }
 
+        /// <summary>
+        /// When implemented in a derived class, executes when a Start command is sent to the service by the Service Control Manager (SCM) or when the operating system starts (for a service that starts automatically). Specifies actions to take when the service starts.
+        /// </summary>
+        /// <param name="args">Data passed by the start command.</param>
         protected override void OnStart(string[] args)
         {
             OnStartPublic(args);
@@ -218,18 +231,27 @@ namespace icue2mqtt
             }
         }
 
+        /// <summary>
+        /// When implemented in a derived class, executes when a Stop command is sent to the service by the Service Control Manager (SCM). Specifies actions to take when a service stops running.
+        /// </summary>
         protected override void OnStop()
         {
             OnStopPublic();
             base.OnStop();
         }
 
+        /// <summary>
+        /// When implemented in a derived class, executes when a Pause command is sent to the service by the Service Control Manager (SCM). Specifies actions to take when a service pauses.
+        /// </summary>
         protected override void OnPause()
         {
             LogInformation("Pausing");
             base.OnPause();
         }
 
+        /// <summary>
+        /// Setups the logging.
+        /// </summary>
         private static void setupLogging()
         {
 
