@@ -1,4 +1,4 @@
-# icue2mqtt
+# icue2mqtt [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
 Corsair iCUE MQTT client for Home Assistant
 
 *Project Description*
