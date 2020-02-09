@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.ServiceProcess;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
@@ -49,6 +50,11 @@ namespace icue2mqtt
         /// </summary>
         private static EventLog logger;
 
+        private static bool stopping = false;
+
+        private static string clientId;
+        private static bool useCredentials;
+
         /// <summary>
         /// Called when service starts and is debuggable.
         /// </summary>
@@ -81,8 +87,8 @@ namespace icue2mqtt
             LogInformation("Connecting to MQTT broker");
             Client = new MqttClient(Properties.Resources.mqttUrl);
             Client.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
-            string clientId = Guid.NewGuid().ToString();
-            bool useCredentials = Properties.Resources.mqttCredentialsUser != null && !Properties.Resources.mqttCredentialsUser.Trim().Equals("") &&
+            clientId = Guid.NewGuid().ToString();
+            useCredentials = Properties.Resources.mqttCredentialsUser != null && !Properties.Resources.mqttCredentialsUser.Trim().Equals("") &&
                 Properties.Resources.mqttCredentialsPwd != null && !Properties.Resources.mqttCredentialsPwd.Trim().Equals("");
             if (useCredentials)
             {
@@ -131,6 +137,44 @@ namespace icue2mqtt
         static void client_ConnectionClosedEvent(object sender, EventArgs e)
         {
             LogInformation(String.Format("{0} - MQTT client closed", new DateTime()));
+            if (!stopping)
+            {
+                reconnectMqttClient();
+            }
+        }
+
+        private static void reconnectMqttClient()
+        {
+            if (Client != null && !Client.IsConnected)
+            {
+                LogInformation("Attempting to reconnect to MQTT broker");
+                try
+                {
+                    if (useCredentials)
+                    {
+                        Client.Connect(clientId, Properties.Resources.mqttCredentialsUser, Properties.Resources.mqttCredentialsPwd);
+                    }
+                    else
+                    {
+                        Client.Connect(clientId);
+                    }
+                    if (Client.IsConnected)
+                    {
+                        LogInformation("Connected to MQTT broker");
+                    }
+                    else
+                    {
+                        Thread.Sleep(10000);
+                        reconnectMqttClient();
+                    }
+                } 
+                catch (Exception ex)
+                {
+                    LogError("Failed to reconnect to MQTT broker", ex);
+                    Thread.Sleep(10000);
+                    reconnectMqttClient();
+                }
+            }
         }
 
         /// <summary>
@@ -216,6 +260,7 @@ namespace icue2mqtt
         /// </summary>
         public void OnStopPublic()
         {
+            stopping = true;
             LogInformation("Stopping");
             if (Client != null && Client.IsConnected)
             {
