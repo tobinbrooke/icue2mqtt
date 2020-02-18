@@ -29,19 +29,40 @@ namespace icue2mqtt.Models
         /// </summary>
         /// <param name="icueDevice">The icue device.</param>
         /// <returns>the newly created instance of MqttIcueDevice</returns>
-        internal static MqttIcueDevice AddIcueDevice(Device icueDevice)
+        internal static MqttIcueDevice AddIcueDevice(Device icueDevice, int suffixNumber)
         {
             if (icueDevice == null)
             {
                 return null;
             }
-            string stateTopic = String.Format("homeassistant/light/icue2mtt/{0}/state", icueDevice.CorsairDevice.model.Replace(" ", "_"));
-            string commandTopic = String.Format("homeassistant/light/icue2mtt/{0}/set", icueDevice.CorsairDevice.model.Replace(" ", "_"));
-            string discoveryTopic = String.Format("homeassistant/light/icue2mtt/{0}/config", icueDevice.CorsairDevice.model.Replace(" ", "_"));
-            MqttIcueDevice mqttIcueDevice = new MqttIcueDevice(icueDevice, stateTopic, commandTopic, discoveryTopic);
-            devices.Add(mqttIcueDevice);
-            setTopicDeviceMap.Add(commandTopic, mqttIcueDevice);
-            stateTopicDeviceMap.Add(stateTopic, mqttIcueDevice);
+            string entityId = icueDevice.CorsairDevice.model.Replace(" ", "_");
+            if (suffixNumber > 0)
+            {
+                entityId += "_" + suffixNumber;
+            }
+            string stateTopic = String.Format("homeassistant/light/icue2mtt/{0}/state", entityId);
+            string commandTopic = String.Format("homeassistant/light/icue2mtt/{0}/set", entityId);
+            string discoveryTopic = String.Format("homeassistant/light/icue2mtt/{0}/config", entityId);
+            MqttIcueDevice mqttIcueDevice = new MqttIcueDevice(icueDevice, stateTopic, commandTopic, discoveryTopic, suffixNumber);
+            if (stateTopicDeviceMap.ContainsKey(stateTopic))
+            {
+                for (int i = 0; i < devices.Count; i++)
+                {
+                    if (devices[i].IcueDevice.CorsairDevice.model.Equals(mqttIcueDevice.IcueDevice.CorsairDevice.model))
+                    {
+                        devices[i] = mqttIcueDevice;
+                        break;
+                    }
+                }
+                setTopicDeviceMap[commandTopic] = mqttIcueDevice;
+                stateTopicDeviceMap[stateTopic] = mqttIcueDevice;
+            }
+            else
+            {
+                devices.Add(mqttIcueDevice);
+                setTopicDeviceMap.Add(commandTopic, mqttIcueDevice);
+                stateTopicDeviceMap.Add(stateTopic, mqttIcueDevice);
+            }
             return mqttIcueDevice;
         }
 

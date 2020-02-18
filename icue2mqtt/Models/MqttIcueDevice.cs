@@ -75,13 +75,21 @@ namespace icue2mqtt.Models
         internal int LastB { get; private set; }
 
         /// <summary>
+        /// Gets the suffix number used for tracking if more than one device of model exists.
+        /// </summary>
+        /// <value>
+        /// The suffix number.
+        /// </value>
+        internal int SuffixNumber { get; private set; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="MqttIcueDevice"/> class.
         /// </summary>
         /// <param name="icueDevice">The icue device.</param>
         /// <param name="stateTopic">The state topic.</param>
         /// <param name="commandTopic">The command topic.</param>
         /// <param name="discoveryTopic">The discovery topic.</param>
-        internal MqttIcueDevice(Device icueDevice, string stateTopic, string commandTopic, string discoveryTopic)
+        internal MqttIcueDevice(Device icueDevice, string stateTopic, string commandTopic, string discoveryTopic, int suffixNumber)
         {
             this.IcueDevice = icueDevice;
             this.StateTopic = stateTopic;
@@ -90,7 +98,8 @@ namespace icue2mqtt.Models
             this.LastR = icueDevice.R;
             this.LastG = icueDevice.G;
             this.LastB = icueDevice.B;
-            this.Discovery = new MqttIcueDeviceDiscovery(icueDevice.CorsairDevice.model, stateTopic, commandTopic);
+            this.SuffixNumber = suffixNumber;
+            this.Discovery = new MqttIcueDeviceDiscovery(icueDevice.CorsairDevice.model, stateTopic, commandTopic, suffixNumber);
 
         }
 

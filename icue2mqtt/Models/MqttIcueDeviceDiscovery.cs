@@ -31,10 +31,15 @@ namespace icue2mqtt.Models
         [JsonProperty("qos")]
         public int Qos { get; private set; } = 0;
 
-        internal MqttIcueDeviceDiscovery(string name, string stateTopic, string commandTopic)
+        internal MqttIcueDeviceDiscovery(string name, string stateTopic, string commandTopic, int suffixNumber)
         {
             this.Name = name;
             this.UniqueId = name.Replace(" ", "_");
+            if (suffixNumber > 0)
+            {
+                this.Name += " " + suffixNumber;
+                this.UniqueId += "_" + suffixNumber;
+            }
             this.StateTopic = stateTopic;
             this.CommandTopic = commandTopic;
         }
