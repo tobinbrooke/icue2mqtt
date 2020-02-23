@@ -2,14 +2,17 @@
 using icue2mqtt.Models;
 using IcueHelper;
 using IcueHelper.Models;
+using MQTTnet;
+using MQTTnet.Client;
+using MQTTnet.Client.Disconnecting;
+using MQTTnet.Client.Options;
+using MQTTnet.Client.Subscribing;
+using MQTTnet.Extensions.ManagedClient;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
-using uPLibrary.Networking.M2Mqtt;
-using uPLibrary.Networking.M2Mqtt.Exceptions;
-using uPLibrary.Networking.M2Mqtt.Messages;
 
 namespace icue2mqtt
 {
@@ -41,69 +44,88 @@ namespace icue2mqtt
         /// <value>
         /// The client.
         /// </value>
-        private MqttClient Client { get; set; }
+        internal IMqttClient Client { get; set; }
 
-        private string clientId;
         private bool stopping = false;
 
         /// <summary>
         /// Connects to the MQTT broker.
         /// </summary>
         /// <param name="reconnecting">if set to <c>true</c> [reconnecting].</param>
-        internal void ConnectToMqttBroker(bool reconnecting)
+        internal async System.Threading.Tasks.Task ConnectToMqttBrokerAsync(bool reconnecting)
         {
             if (reconnecting)
             {
-                Thread.Sleep(10000);
+                Thread.Sleep(TimeSpan.FromSeconds(10));
             }
             Logger.LogInformation(!reconnecting ? "Connecting to MQTT broker" : "Attempting to reconnect to MQTT broker");
-            Client = new MqttClient(Properties.Resources.mqttUrl);
-            Client.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
-            Client.ConnectionClosed += client_ConnectionClosedEvent;
-            clientId = Guid.NewGuid().ToString();
             bool useCredentials = Properties.Resources.mqttCredentialsUser != null && !Properties.Resources.mqttCredentialsUser.Trim().Equals("") &&
                 Properties.Resources.mqttCredentialsPwd != null && !Properties.Resources.mqttCredentialsPwd.Trim().Equals("");
             try
             {
+
+                MqttClientOptionsBuilder messageBuilder = messageBuilder = new MqttClientOptionsBuilder()
+                      .WithClientId(Guid.NewGuid().ToString())
+                      .WithTcpServer(Properties.Resources.mqttUrl)
+                      .WithCleanSession();
                 if (useCredentials)
                 {
-                    Client.Connect(clientId, Properties.Resources.mqttCredentialsUser, Properties.Resources.mqttCredentialsPwd);
+                    messageBuilder.WithCredentials(Properties.Resources.mqttCredentialsUser, Properties.Resources.mqttCredentialsPwd);
                 }
-                else
+
+                var managedOptions = new ManagedMqttClientOptionsBuilder()
+                  .WithAutoReconnectDelay(TimeSpan.FromSeconds(5))
+                  .WithClientOptions(messageBuilder.Build())
+                  .Build();
+
+                if (Client == null)
                 {
-                    Client.Connect(clientId);
+                    Client = new MqttFactory().CreateMqttClient();
+                    Client.DisconnectedHandler = new MqttClientDisconnectedHandlerDelegate(e =>
+                    {
+                        if (!stopping)
+                        {
+                            _ = ConnectToMqttBrokerAsync(true);
+                        }
+                    });
+                    Client.UseApplicationMessageReceivedHandler(client_MqttMsgPublishReceived);
                 }
+
+                await Client.ConnectAsync(managedOptions.ClientOptions, new CancellationToken());
                 if (Client.IsConnected)
                 {
-                    if (reconnecting)
-                    {
-                        Thread.Sleep(15000);
-                    }
                     Logger.LogInformation("Connected to MQTT broker");
                     PublishDevices();
                 }
                 else
                 {
-                    Logger.LogInformation("Failed to connect to MQTT broker.");
-                    ConnectToMqttBroker(true);
+                    if (!reconnecting)
+                    {
+                        Logger.LogInformation("Failed to connect to MQTT broker.");
+                        _ = ConnectToMqttBrokerAsync(true);
+                    }
                 }
             }
-            catch(MqttConnectionException connectionEx)
+            catch (Exception connectionEx)
             {
-                Logger.LogError("Failed to connect to MQTT broker.", connectionEx);
-                ConnectToMqttBroker(true);
+                if (!reconnecting)
+                {
+                    Logger.LogError("Failed to connect to MQTT broker.", connectionEx);
+                    _ = ConnectToMqttBrokerAsync(true);
+                }
             }
         }
 
         /// <summary>
         /// Stops the MQTT client and disposes of the  IcueSDK releasing the icue connection
         /// </summary>
-        internal void Stop()
+        internal async System.Threading.Tasks.Task StopAsync()
         {
             stopping = true;
             if (Client != null && Client.IsConnected)
             {
-                Client.Disconnect();
+                await Client.DisconnectAsync();
+                Client.Dispose();
             }
             if (IcueSdk != null)
             {
@@ -132,15 +154,61 @@ namespace icue2mqtt
                     if (mqttIcueDevice != null)
                     {
                         Logger.LogInformation(String.Format("Publishing device {0}", mqttIcueDevice.IcueDevice.CorsairDevice.model));
-                        Client.Publish(
-                            mqttIcueDevice.DiscoveryTopic,
-                            Encoding.UTF8.GetBytes(mqttIcueDevice.Discovery.ToJson()),
-                            MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE,
-                            false);
-                        Client.Subscribe(new string[] { mqttIcueDevice.StateTopic }, new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
-                        Client.Subscribe(new string[] { mqttIcueDevice.CommandTopic }, new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
+                        MqttClientSubscribeOptions subscriptions = new MqttClientSubscribeOptions();
+                        List<TopicFilter> topicFilters = new List<TopicFilter>();
+                        TopicFilter test = new TopicFilterBuilder()
+                                        .WithTopic(mqttIcueDevice.StateTopic)
+                                        .WithTopic(mqttIcueDevice.CommandTopic)
+                                        .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
+                                        .Build();
+                        topicFilters.Add(new TopicFilter()
+                        {
+                            Topic = mqttIcueDevice.StateTopic,
+                            QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce
+                        });
+                        topicFilters.Add(new TopicFilter()
+                        {
+                            Topic = mqttIcueDevice.CommandTopic,
+                            QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce
+                        });
+                        subscriptions.TopicFilters = topicFilters;
+                        Client.SubscribeAsync(subscriptions);
+                        MqttApplicationMessage publishMessage = new MqttApplicationMessage()
+                        {
+                            Payload = Encoding.UTF8.GetBytes(mqttIcueDevice.Discovery.ToJson()),
+                            Topic = mqttIcueDevice.DiscoveryTopic,
+                            Retain = true,
+                            QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce
+                        };
+                        Client.PublishAsync(publishMessage);
                         SendStateUpdate(mqttIcueDevice);
                     }
+                }
+                if (MqttIcueDeviceList.GetDevices().Length > 0)
+                {
+                    MqttClientSubscribeOptions subscriptions = new MqttClientSubscribeOptions();
+                    List<TopicFilter> topicFilters = new List<TopicFilter>();
+                    topicFilters.Add(new TopicFilter()
+                    {
+                        Topic = MqttIcueDeviceList.TOPIC_ALL_DEVICE_STATE,
+                        QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce
+                    });
+                    topicFilters.Add(new TopicFilter()
+                    {
+                        Topic = MqttIcueDeviceList.TOPIC_ALL_DEVICE_SET,
+                        QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce
+                    });
+                    subscriptions.TopicFilters = topicFilters;
+                    Client.SubscribeAsync(subscriptions);
+                    MqttApplicationMessage publishMessage = new MqttApplicationMessage()
+                    {
+                        Payload = Encoding.UTF8.GetBytes(MqttIcueDeviceList.GetAllDeviceDiscovery().ToJson()),
+                        Topic = MqttIcueDeviceList.TOPIC_ALL_DEVICE_CONFIG,
+                        Retain = true,
+                        QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce
+                    };
+                    Client.PublishAsync(publishMessage);
+                    SendStateUpdate(MqttIcueDeviceList.TOPIC_ALL_DEVICE_STATE, MqttIcueDeviceList.GetAllDeviceAverageState());
                 }
             }
             else
@@ -151,7 +219,12 @@ namespace icue2mqtt
 
         internal void GetListOfMqttDevices()
         {
-            Device[] devices = IcueSdk.ListDevices();
+            Device[] devices = IcueSdk.ListDevices(); 
+            CorsairError error = IcueSdk.CorsairGetLastError();
+            if (error != CorsairError.CE_Success)
+            {
+                Logger.LogError("SDK error getting list of devices", new Exception(error.ToString()));
+            }
             Dictionary<string, int> modelCount = new Dictionary<string, int>();
             for (int i = 0; i < devices.Length; i++)
             {
@@ -166,7 +239,7 @@ namespace icue2mqtt
                 {
                     modelCount.Add(devices[i].CorsairDevice.model, modelSuffix);
                 }
-                MqttIcueDevice mqttIcueDevice = MqttIcueDeviceList.AddIcueDevice(devices[i], modelSuffix);
+                MqttIcueDeviceList.AddIcueDevice(devices[i], modelSuffix);
             }
         }
 
@@ -175,24 +248,32 @@ namespace icue2mqtt
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="MqttMsgPublishEventArgs"/> instance containing the event data.</param>
-        private void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
+        private void client_MqttMsgPublishReceived(MqttApplicationMessageReceivedEventArgs e)
         {
-            string jsonMessage = Encoding.UTF8.GetString(e.Message, 0, e.Message.Length);
-            MqttIcueDevice mqttIcueDevice = MqttIcueDeviceList.GetDeviceByStateTopic(e.Topic);
+            string jsonMessage = Encoding.UTF8.GetString(e.ApplicationMessage.Payload, 0, e.ApplicationMessage.Payload.Length);
+
+            if (e.ApplicationMessage.Topic == MqttIcueDeviceList.TOPIC_ALL_DEVICE_STATE)
+            {
+                SendStateUpdate(MqttIcueDeviceList.TOPIC_ALL_DEVICE_STATE, MqttIcueDeviceList.GetAllDeviceAverageState());
+                return;
+            }
+
+            MqttIcueDevice mqttIcueDevice = MqttIcueDeviceList.GetDeviceByStateTopic(e.ApplicationMessage.Topic);
             if (mqttIcueDevice != null)
             {
                 SendStateUpdate(mqttIcueDevice);
                 return;
             }
-            mqttIcueDevice = MqttIcueDeviceList.GetDeviceBySetTopic(e.Topic);
-            if (mqttIcueDevice != null)
+            bool isSetAllDevices = e.ApplicationMessage.Topic == MqttIcueDeviceList.TOPIC_ALL_DEVICE_SET;
+            mqttIcueDevice = MqttIcueDeviceList.GetDeviceBySetTopic(e.ApplicationMessage.Topic);
+            if (mqttIcueDevice != null || isSetAllDevices)
             {
                 MqttIcueDeviceState state = JsonConvert.DeserializeObject<MqttIcueDeviceState>(jsonMessage);
                 if (state.Color == null)
                 {
                     if (state.State.Equals("ON"))
                     {
-                        IcueSdk.SetDeviceColor(mqttIcueDevice.IcueDevice, mqttIcueDevice.LastR, mqttIcueDevice.LastG, mqttIcueDevice.LastB);
+                        SetState(mqttIcueDevice, isSetAllDevices);
                         CorsairError error = IcueSdk.CorsairGetLastError();
                         if (error != CorsairError.CE_Success)
                         {
@@ -202,7 +283,7 @@ namespace icue2mqtt
                     else
                     {
                         mqttIcueDevice.SetOffState();
-                        IcueSdk.SetDeviceColor(mqttIcueDevice.IcueDevice, 0, 0, 0);
+                        SetState(mqttIcueDevice, isSetAllDevices, 0, 0, 0);
                         CorsairError error = IcueSdk.CorsairGetLastError();
                         if (error != CorsairError.CE_Success)
                         {
@@ -213,14 +294,42 @@ namespace icue2mqtt
                 }
                 else
                 {
-                    IcueSdk.SetDeviceColor(mqttIcueDevice.IcueDevice, state.Color.R, state.Color.G, state.Color.B);
+                    SetState(mqttIcueDevice, isSetAllDevices, state.Color.R, state.Color.G, state.Color.B);
                     CorsairError error = IcueSdk.CorsairGetLastError();
                     if (error != CorsairError.CE_Success)
                     {
-                        Logger.LogError("SDK error setting device colo", new Exception(error.ToString()));
+                        Logger.LogError("SDK error setting device color", new Exception(error.ToString()));
                     }
                 }
                 return;
+            }
+        }
+
+        private void SetState(MqttIcueDevice mqttIcueDevice, bool isAllDevices, int R, int G, int B)
+        {
+            if (isAllDevices)
+            {
+                MqttIcueDeviceList.SetAllDeviceState(IcueSdk, R, G, B);
+                foreach(MqttIcueDevice icueDevice in MqttIcueDeviceList.GetDevices())
+                {
+                    SendStateUpdate(icueDevice);
+                }
+            }
+            else
+            {
+                IcueSdk.SetDeviceColor(mqttIcueDevice.IcueDevice, R, G, B);
+            }
+        }
+
+        private void SetState(MqttIcueDevice mqttIcueDevice, bool isAllDevices)
+        {
+            if (isAllDevices)
+            {
+                SetState(mqttIcueDevice, isAllDevices, MqttIcueDeviceList.LastAverageR, MqttIcueDeviceList.LastAverageG, MqttIcueDeviceList.LastAverageB);
+            }
+            else
+            {
+                SetState(mqttIcueDevice, isAllDevices, mqttIcueDevice.LastR, mqttIcueDevice.LastG, mqttIcueDevice.LastB);
             }
         }
 
@@ -236,7 +345,7 @@ namespace icue2mqtt
                 return;
             }
             Logger.LogInformation(String.Format("{0} - MQTT client closed", new DateTime()));
-            ConnectToMqttBroker(true);
+            _ = ConnectToMqttBrokerAsync(true);
         }
 
         /// <summary>
@@ -247,11 +356,25 @@ namespace icue2mqtt
         {
             if (Client.IsConnected)
             {
-                Client.Publish(
-                  mqttIcueDevice.StateTopic,
-                  Encoding.UTF8.GetBytes(mqttIcueDevice.GetState().ToJson()),
-                  MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE,
-                  false);
+                Client.PublishAsync(new MqttApplicationMessageBuilder()
+                  .WithTopic(mqttIcueDevice.StateTopic)
+                  .WithPayload(Encoding.UTF8.GetBytes(mqttIcueDevice.GetState().ToJson()))
+                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
+                  .WithRetainFlag(true)
+                  .Build());
+            }
+        }
+
+        private void SendStateUpdate(string stateTopic, MqttIcueDeviceState state)
+        {
+            if (Client.IsConnected)
+            {
+                Client.PublishAsync(new MqttApplicationMessageBuilder()
+                  .WithTopic(stateTopic)
+                  .WithPayload(Encoding.UTF8.GetBytes(state.ToJson()))
+                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
+                  .WithRetainFlag(true)
+                  .Build());
             }
         }
 

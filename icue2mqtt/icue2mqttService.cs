@@ -32,7 +32,7 @@ namespace icue2mqtt
             }
 
             //run MQTT client in seperate thread to allow service to start whilst waiting for icue to start
-            clientTask = new Task(() => MqttClientUtil.Instance.ConnectToMqttBroker(false));
+            clientTask = new Task(() => { _ = MqttClientUtil.Instance.ConnectToMqttBrokerAsync(false); });
             clientTask.Start();
         }
 
@@ -49,10 +49,10 @@ namespace icue2mqtt
         /// <summary>
         /// Called when service is stopped to be debuggable.
         /// </summary>
-        public void OnStopPublic()
+        public async Task OnStopPublicAsync()
         {
             Logger.LogInformation("Stopping");
-            MqttClientUtil.Instance.Stop();
+            await MqttClientUtil.Instance.StopAsync();
             if (clientTask != null && clientTask.IsCompleted)
             {
                 clientTask.Dispose();
@@ -64,8 +64,10 @@ namespace icue2mqtt
         /// </summary>
         protected override void OnStop()
         {
-            OnStopPublic();
-            base.OnStop();
+            OnStopPublicAsync().ContinueWith(e =>
+            {
+                base.OnStop();
+            });
         }
 
         /// <summary>

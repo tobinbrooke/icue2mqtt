@@ -9,6 +9,10 @@ namespace icue2mqtt.Models
     /// </summary>
     internal static class MqttIcueDeviceList
     {
+        internal const string TOPIC_ALL_DEVICE_CONFIG = "homeassistant/light/icue2mtt/all_icue/config";
+        internal const string TOPIC_ALL_DEVICE_SET = "homeassistant/light/icue2mtt/all_icue/set";
+        internal const string TOPIC_ALL_DEVICE_STATE = "homeassistant/light/icue2mtt/all_icue/state";
+
         /// <summary>
         /// The devices
         /// </summary>
@@ -23,6 +27,14 @@ namespace icue2mqtt.Models
         /// The state topic device map linking state topics to devices
         /// </summary>
         private static readonly Dictionary<string, MqttIcueDevice> stateTopicDeviceMap = new Dictionary<string, MqttIcueDevice>();
+
+        private static readonly List<Device> icueDevices = new List<Device>();
+
+        internal static int LastAverageR { get; set; }
+
+        internal static int LastAverageG { get; set; }
+
+        internal static int LastAverageB { get; set; }
 
         /// <summary>
         /// Adds the icue device. Sets the topics and create instances of MqttIcueDevice
@@ -48,9 +60,10 @@ namespace icue2mqtt.Models
             {
                 for (int i = 0; i < devices.Count; i++)
                 {
-                    if (devices[i].IcueDevice.CorsairDevice.model.Equals(mqttIcueDevice.IcueDevice.CorsairDevice.model))
+                    if (devices[i].IcueDevice.CorsairDevice.model.Equals(mqttIcueDevice.IcueDevice.CorsairDevice.model) && suffixNumber == devices[i].SuffixNumber)
                     {
                         devices[i] = mqttIcueDevice;
+                        icueDevices[i] = icueDevice;
                         break;
                     }
                 }
@@ -60,6 +73,7 @@ namespace icue2mqtt.Models
             else
             {
                 devices.Add(mqttIcueDevice);
+                icueDevices.Add(icueDevice);
                 setTopicDeviceMap.Add(commandTopic, mqttIcueDevice);
                 stateTopicDeviceMap.Add(stateTopic, mqttIcueDevice);
             }
@@ -116,6 +130,46 @@ namespace icue2mqtt.Models
         internal static MqttIcueDevice[] GetDevices()
         {
             return devices.ToArray();
+        }
+
+        internal static MqttIcueDeviceState GetAllDeviceAverageState()
+        {
+            MqttIcueDeviceState result = new MqttIcueDeviceState();
+            if (devices.Count == 0)
+            {
+                result.State = "OFF";
+            }
+            else
+            {
+                int totalR = 0;
+                int totalG = 0;
+                int totalB = 0;
+                foreach (MqttIcueDevice device in devices)
+                {
+                    totalR += device.IcueDevice.R;
+                    totalG += device.IcueDevice.G;
+                    totalB += device.IcueDevice.B;
+                }
+                LastAverageR = totalR / devices.Count;
+                LastAverageG = totalG / devices.Count;
+                LastAverageB  = totalB / devices.Count;
+                result.State = (LastAverageR > 0 || LastAverageG > 0 || LastAverageB > 0) ? "ON" : "OFF";
+                result.Color = new MqttColor(LastAverageR, LastAverageG, LastAverageB);
+            }
+            return result;
+        }
+
+        internal static MqttIcueDeviceDiscovery GetAllDeviceDiscovery()
+        {
+            return new MqttIcueDeviceDiscovery("all icue", TOPIC_ALL_DEVICE_STATE, TOPIC_ALL_DEVICE_SET, 0);
+        }
+
+        internal static void SetAllDeviceState(IcueHelper.Sdk IcueSdk, int R, int G, int B)
+        {
+            LastAverageR = R;
+            LastAverageG = G;
+            LastAverageB = B;
+            IcueSdk.SetDeviceColor(icueDevices.ToArray(), R, G, B);
         }
     }
 }

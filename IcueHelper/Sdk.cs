@@ -60,11 +60,13 @@ namespace IcueHelper
                 throw new Exception("Incompatible SDK (" + sdkVersion + ") and CUE " + cueVersion + " versions.");
             }
 
+
             if (exclusiveLightingControl)
             {
                 CUESDK.CorsairRequestControl(CorsairAccessMode.CAM_ExclusiveLightingControl);
                 HasExclusiveLightingControl = true;
             }
+
         }
 
         /// <summary>
@@ -131,8 +133,9 @@ namespace IcueHelper
             bool setResult = CUESDK.CorsairSetLedsColorsBufferByDeviceIndex(device.DeviceIndex, device.Leds.Count, device.Leds.ToArray());
             if (setResult)
             {
-                return CUESDK.CorsairSetLedsColorsFlushBufferAsync(null, null);
+                return CUESDK.CorsairSetLedsColorsFlushBufferAsync(null, this);
             }
+            
             return false;
         }
 
@@ -163,7 +166,7 @@ namespace IcueHelper
                     return false;
                 }
             }
-            return CUESDK.CorsairSetLedsColorsFlushBuffer();
+            return CUESDK.CorsairSetLedsColorsFlushBufferAsync(null, this);
         }
 
         /// <summary>
