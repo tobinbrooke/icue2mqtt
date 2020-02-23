@@ -353,6 +353,7 @@ namespace icue2mqtt
                     HasControl = false;
                     IcueSdk.SetLayerPriority(126);
                 }
+                SendControlSwitchUpdate();
                 return;
             }
         }
@@ -438,7 +439,7 @@ namespace icue2mqtt
                   .WithTopic(TOPIC_CONTROL_SWITCH_STATE)
                   .WithPayload(Encoding.UTF8.GetBytes(HasControl? "ON": "OFF"))
                   .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
-                  .WithRetainFlag(true)
+                  .WithRetainFlag(false)
                   .Build());
             }
         }

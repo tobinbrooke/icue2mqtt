@@ -133,7 +133,7 @@ namespace IcueHelper
             bool setResult = CUESDK.CorsairSetLedsColorsBufferByDeviceIndex(device.DeviceIndex, device.Leds.Count, device.Leds.ToArray());
             if (setResult)
             {
-                return CUESDK.CorsairSetLedsColorsFlushBufferAsync(null, this);
+                return CUESDK.CorsairSetLedsColorsFlushBuffer();
             }
             
             return false;
@@ -166,7 +166,7 @@ namespace IcueHelper
                     return false;
                 }
             }
-            return CUESDK.CorsairSetLedsColorsFlushBufferAsync(null, this);
+            return CUESDK.CorsairSetLedsColorsFlushBuffer();
         }
 
         /// <summary>
