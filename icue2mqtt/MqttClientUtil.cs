@@ -345,15 +345,14 @@ namespace icue2mqtt
             {
                 if (jsonMessage.Equals("ON"))
                 {
-                    IcueSdk.SetLayerPriority(130);
                     HasControl = true;
+                    IcueSdk.SetLayerPriority(130);
                 }
                 else
                 {
-                    IcueSdk.SetLayerPriority(126);
                     HasControl = false;
+                    IcueSdk.SetLayerPriority(126);
                 }
-                SendControlSwitchUpdate();
                 return;
             }
         }
@@ -438,7 +437,7 @@ namespace icue2mqtt
                 Client.PublishAsync(new MqttApplicationMessageBuilder()
                   .WithTopic(TOPIC_CONTROL_SWITCH_STATE)
                   .WithPayload(Encoding.UTF8.GetBytes(HasControl? "ON": "OFF"))
-                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
+                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
                   .WithRetainFlag(true)
                   .Build());
             }
