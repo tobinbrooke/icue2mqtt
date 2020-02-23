@@ -28,6 +28,9 @@ namespace icue2mqtt
 
         }
 
+        internal const string TOPIC_CONTROL_SWITCH_CONFIG = "homeassistant/switch/icue2mtt/icue_control/config";
+        internal const string TOPIC_CONTROL_SWITCH_SET = "homeassistant/switch/icue2mtt/icue_control/set";
+        internal const string TOPIC_CONTROL_SWITCH_STATE = "homeassistant/switch/icue2mtt/icue_control/state";
 
         /// <summary>
         /// Gets or sets the icue SDK.
@@ -47,6 +50,8 @@ namespace icue2mqtt
         internal IMqttClient Client { get; set; }
 
         private bool stopping = false;
+
+        internal bool HasControl { get; set; } = true;
 
         /// <summary>
         /// Connects to the MQTT broker.
@@ -156,11 +161,6 @@ namespace icue2mqtt
                         Logger.LogInformation(String.Format("Publishing device {0}", mqttIcueDevice.IcueDevice.CorsairDevice.model));
                         MqttClientSubscribeOptions subscriptions = new MqttClientSubscribeOptions();
                         List<TopicFilter> topicFilters = new List<TopicFilter>();
-                        TopicFilter test = new TopicFilterBuilder()
-                                        .WithTopic(mqttIcueDevice.StateTopic)
-                                        .WithTopic(mqttIcueDevice.CommandTopic)
-                                        .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
-                                        .Build();
                         topicFilters.Add(new TopicFilter()
                         {
                             Topic = mqttIcueDevice.StateTopic,
@@ -180,12 +180,12 @@ namespace icue2mqtt
                             Retain = true,
                             QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce
                         };
-                        Client.PublishAsync(publishMessage);
-                        SendStateUpdate(mqttIcueDevice);
+                        Client.PublishAsync(publishMessage).ContinueWith(e => { SendStateUpdate(mqttIcueDevice); });
                     }
                 }
                 if (MqttIcueDeviceList.GetDevices().Length > 0)
                 {
+                    //publish the all device entity
                     MqttClientSubscribeOptions subscriptions = new MqttClientSubscribeOptions();
                     List<TopicFilter> topicFilters = new List<TopicFilter>();
                     topicFilters.Add(new TopicFilter()
@@ -207,8 +207,39 @@ namespace icue2mqtt
                         Retain = true,
                         QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce
                     };
-                    Client.PublishAsync(publishMessage);
-                    SendStateUpdate(MqttIcueDeviceList.TOPIC_ALL_DEVICE_STATE, MqttIcueDeviceList.GetAllDeviceAverageState());
+                    Client.PublishAsync(publishMessage).ContinueWith(e =>
+                    {
+                        SendStateUpdate(MqttIcueDeviceList.TOPIC_ALL_DEVICE_STATE, MqttIcueDeviceList.GetAllDeviceAverageState());
+                    });
+                    
+
+                    //publish the icue control switch
+                    subscriptions = new MqttClientSubscribeOptions();
+                    topicFilters = new List<TopicFilter>();
+                    topicFilters.Add(new TopicFilter()
+                    {
+                        Topic = TOPIC_CONTROL_SWITCH_SET,
+                        QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce
+                    });
+                    topicFilters.Add(new TopicFilter()
+                    {
+                        Topic = TOPIC_CONTROL_SWITCH_STATE,
+                        QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce
+                    });
+                    subscriptions.TopicFilters = topicFilters;
+                    Client.SubscribeAsync(subscriptions);
+                    publishMessage = new MqttApplicationMessage()
+                    {
+                        Payload = Encoding.UTF8.GetBytes(new MqttIcueControlSwitchDiscovery(TOPIC_CONTROL_SWITCH_STATE, TOPIC_CONTROL_SWITCH_SET).ToJson()),
+                        Topic = TOPIC_CONTROL_SWITCH_CONFIG,
+                        Retain = false,
+                        QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce
+                    };
+                    Client.PublishAsync(publishMessage).ContinueWith(e =>
+                    {
+                        SendControlSwitchUpdate();
+                    });
+                    
                 }
             }
             else
@@ -258,6 +289,12 @@ namespace icue2mqtt
                 return;
             }
 
+            if (e.ApplicationMessage.Topic == TOPIC_CONTROL_SWITCH_STATE)
+            {
+                SendControlSwitchUpdate();
+                return;
+            }
+
             MqttIcueDevice mqttIcueDevice = MqttIcueDeviceList.GetDeviceByStateTopic(e.ApplicationMessage.Topic);
             if (mqttIcueDevice != null)
             {
@@ -301,6 +338,22 @@ namespace icue2mqtt
                         Logger.LogError("SDK error setting device color", new Exception(error.ToString()));
                     }
                 }
+                return;
+            }
+
+            if (e.ApplicationMessage.Topic == TOPIC_CONTROL_SWITCH_SET)
+            {
+                if (jsonMessage.Equals("ON"))
+                {
+                    IcueSdk.SetLayerPriority(130);
+                    HasControl = true;
+                }
+                else
+                {
+                    IcueSdk.SetLayerPriority(126);
+                    HasControl = false;
+                }
+                SendControlSwitchUpdate();
                 return;
             }
         }
@@ -373,6 +426,19 @@ namespace icue2mqtt
                   .WithTopic(stateTopic)
                   .WithPayload(Encoding.UTF8.GetBytes(state.ToJson()))
                   .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
+                  .WithRetainFlag(true)
+                  .Build());
+            }
+        }
+
+        private void SendControlSwitchUpdate()
+        {
+            if (Client.IsConnected)
+            {
+                Client.PublishAsync(new MqttApplicationMessageBuilder()
+                  .WithTopic(TOPIC_CONTROL_SWITCH_STATE)
+                  .WithPayload(Encoding.UTF8.GetBytes(HasControl? "ON": "OFF"))
+                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
                   .WithRetainFlag(true)
                   .Build());
             }

@@ -193,6 +193,15 @@ namespace IcueHelper
         }
 
         /// <summary>
+        /// Allows the application to set the layer priority to allow the iCue software to regain control
+        /// </summary>
+        /// <param name="priority"></param>
+        public void SetLayerPriority(int priority)
+        {
+            CUESDK.CorsairSetLayerPriority(priority);
+        }
+
+        /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
         /// </summary>
         public void Dispose()

@@ -23,7 +23,7 @@ namespace icue2mqtt.Models
         public string Schema { get; private set; } = "json";
 
         [JsonProperty("rgb")]
-        public bool Rgb { get; private set; } = true;
+        public bool Rgb { get; set; } = true;
 
         [JsonProperty("optimistic")]
         public bool Optimisitic { get; private set; } = false;
@@ -42,6 +42,24 @@ namespace icue2mqtt.Models
             }
             this.StateTopic = stateTopic;
             this.CommandTopic = commandTopic;
+        }
+
+
+        internal MqttIcueDeviceDiscovery(string name, string stateTopic, string commandTopic, int suffixNumber, bool isSwitch)
+        {
+            this.Name = name;
+            this.UniqueId = name.Replace(" ", "_");
+            if (suffixNumber > 0)
+            {
+                this.Name += " " + suffixNumber;
+                this.UniqueId += "_" + suffixNumber;
+            }
+            this.StateTopic = stateTopic;
+            this.CommandTopic = commandTopic;
+            if (isSwitch)
+            {
+                Rgb = false;
+            }
         }
 
     }
