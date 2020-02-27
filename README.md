@@ -18,7 +18,7 @@ there is currently no installers. The repository will need to be cloned and buil
 * Run "dotnet publish -r win-x64 -c Release"
 * Open the icue2mqtt/bin/release/netcoreapp3.1/win-x64/publish directory
 * Copy all the files to a suitable deployment directory for the following points we will assume this is C:\icue2mqttRelease
-* Edit the C:\icue2mqttRelease\Properties\Resources.resx in a suitable
+* Edit the C:\icue2mqttRelease\properties.json in a suitable text editor
 * Set the mqttUrl property value to the IP of your MQTT broker
 * If you MQTT server requires authentication then 
 * CD to the deployment directory set the mqttCredentialsUser and mqttCredentialsPwd property values
