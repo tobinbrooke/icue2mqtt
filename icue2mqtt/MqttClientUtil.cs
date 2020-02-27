@@ -412,7 +412,7 @@ namespace icue2mqtt
                 Client.PublishAsync(new MqttApplicationMessageBuilder()
                   .WithTopic(mqttIcueDevice.StateTopic)
                   .WithPayload(Encoding.UTF8.GetBytes(mqttIcueDevice.GetState().ToJson()))
-                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
+                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtMostOnce)
                   .WithRetainFlag(true)
                   .Build());
             }
@@ -425,7 +425,7 @@ namespace icue2mqtt
                 Client.PublishAsync(new MqttApplicationMessageBuilder()
                   .WithTopic(stateTopic)
                   .WithPayload(Encoding.UTF8.GetBytes(state.ToJson()))
-                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
+                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtMostOnce)
                   .WithRetainFlag(true)
                   .Build());
             }
@@ -438,7 +438,7 @@ namespace icue2mqtt
                 Client.PublishAsync(new MqttApplicationMessageBuilder()
                   .WithTopic(TOPIC_CONTROL_SWITCH_STATE)
                   .WithPayload(Encoding.UTF8.GetBytes(HasControl? "ON": "OFF"))
-                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
+                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtMostOnce)
                   .WithRetainFlag(false)
                   .Build());
             }
