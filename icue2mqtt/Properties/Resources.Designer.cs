@@ -59,41 +59,5 @@ namespace icue2mqtt.Properties {
                 resourceCulture = value;
             }
         }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to C:\temp\servicelog.txt.
-        /// </summary>
-        internal static string logPath {
-            get {
-                return ResourceManager.GetString("logPath", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to .
-        /// </summary>
-        internal static string mqttCredentialsPwd {
-            get {
-                return ResourceManager.GetString("mqttCredentialsPwd", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to .
-        /// </summary>
-        internal static string mqttCredentialsUser {
-            get {
-                return ResourceManager.GetString("mqttCredentialsUser", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to .
-        /// </summary>
-        internal static string mqttUrl {
-            get {
-                return ResourceManager.GetString("mqttUrl", resourceCulture);
-            }
-        }
     }
 }

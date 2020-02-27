@@ -64,18 +64,18 @@ namespace icue2mqtt
                 Thread.Sleep(TimeSpan.FromSeconds(10));
             }
             Logger.LogInformation(!reconnecting ? "Connecting to MQTT broker" : "Attempting to reconnect to MQTT broker");
-            bool useCredentials = Properties.Resources.mqttCredentialsUser != null && !Properties.Resources.mqttCredentialsUser.Trim().Equals("") &&
-                Properties.Resources.mqttCredentialsPwd != null && !Properties.Resources.mqttCredentialsPwd.Trim().Equals("");
+            bool useCredentials = icue2mqttService.appProperties.mqttCredentialsUser != null && !icue2mqttService.appProperties.mqttCredentialsUser.Trim().Equals("") &&
+                icue2mqttService.appProperties.mqttCredentialsPwd != null && !icue2mqttService.appProperties.mqttCredentialsPwd.Trim().Equals("");
             try
             {
 
                 MqttClientOptionsBuilder messageBuilder = messageBuilder = new MqttClientOptionsBuilder()
                       .WithClientId(Guid.NewGuid().ToString())
-                      .WithTcpServer(Properties.Resources.mqttUrl)
+                      .WithTcpServer(icue2mqttService.appProperties.mqttUrl)
                       .WithCleanSession();
                 if (useCredentials)
                 {
-                    messageBuilder.WithCredentials(Properties.Resources.mqttCredentialsUser, Properties.Resources.mqttCredentialsPwd);
+                    messageBuilder.WithCredentials(icue2mqttService.appProperties.mqttCredentialsUser, icue2mqttService.appProperties.mqttCredentialsPwd);
                 }
 
                 var managedOptions = new ManagedMqttClientOptionsBuilder()

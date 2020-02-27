@@ -1,0 +1,6 @@
+{
+  "logPath": "C:\\temp\\servicelog.txt",
+  "mqttCredentialsPwd": "",
+  "mqttCredentialsUser": "",
+  "mqttUrl": ""
+}

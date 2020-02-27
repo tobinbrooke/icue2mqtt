@@ -117,16 +117,4 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="logPath" xml:space="preserve">
-    <value>C:\temp\servicelog.txt</value>
-  </data>
-  <data name="mqttCredentialsPwd" xml:space="preserve">
-    <value />
-  </data>
-  <data name="mqttCredentialsUser" xml:space="preserve">
-    <value />
-  </data>
-  <data name="mqttUrl" xml:space="preserve">
-    <value />
-  </data>
 </root>

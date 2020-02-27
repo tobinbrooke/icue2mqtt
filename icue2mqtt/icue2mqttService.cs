@@ -1,4 +1,7 @@
-﻿using System.ServiceProcess;
+﻿using Newtonsoft.Json;
+using System;
+using System.IO;
+using System.ServiceProcess;
 using System.Threading.Tasks;
 
 namespace icue2mqtt
@@ -9,6 +12,7 @@ namespace icue2mqtt
     /// <seealso cref="System.ServiceProcess.ServiceBase" />
     class icue2mqttService : ServiceBase
     {
+        public static AppProperties appProperties { get; set; }
 
         /// <summary>
         /// The client task
@@ -21,10 +25,11 @@ namespace icue2mqtt
         /// <param name="args">The startup arguments.</param>
         public void OnStartPublic(string[] args)
         {
+            LoadAppProperties();
             Logger.SetupLogging();
             Logger.LogInformation("Starting");
 
-            if (Properties.Resources.mqttUrl == null || Properties.Resources.mqttUrl.Trim().Equals(""))
+            if (appProperties == null || appProperties.mqttUrl == null || appProperties.mqttUrl.Trim().Equals(""))
             {
                 Logger.LogInformation("No MQTT broker URL. Stopping");
                 base.Stop();
@@ -34,6 +39,12 @@ namespace icue2mqtt
             //run MQTT client in seperate thread to allow service to start whilst waiting for icue to start
             clientTask = new Task(() => { _ = MqttClientUtil.Instance.ConnectToMqttBrokerAsync(false); });
             clientTask.Start();
+        }
+
+        public void LoadAppProperties()
+        {
+            string jsonString = File.ReadAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "properties.json"));
+            appProperties = JsonConvert.DeserializeObject<AppProperties>(jsonString);
         }
 
         /// <summary>
