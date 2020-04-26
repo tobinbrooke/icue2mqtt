@@ -163,11 +163,6 @@ namespace icue2mqtt
                         List<TopicFilter> topicFilters = new List<TopicFilter>();
                         topicFilters.Add(new TopicFilter()
                         {
-                            Topic = mqttIcueDevice.StateTopic,
-                            QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce
-                        });
-                        topicFilters.Add(new TopicFilter()
-                        {
                             Topic = mqttIcueDevice.CommandTopic,
                             QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce
                         });
@@ -188,11 +183,6 @@ namespace icue2mqtt
                     //publish the all device entity
                     MqttClientSubscribeOptions subscriptions = new MqttClientSubscribeOptions();
                     List<TopicFilter> topicFilters = new List<TopicFilter>();
-                    topicFilters.Add(new TopicFilter()
-                    {
-                        Topic = MqttIcueDeviceList.TOPIC_ALL_DEVICE_STATE,
-                        QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce
-                    });
                     topicFilters.Add(new TopicFilter()
                     {
                         Topic = MqttIcueDeviceList.TOPIC_ALL_DEVICE_SET,
@@ -219,11 +209,6 @@ namespace icue2mqtt
                     topicFilters.Add(new TopicFilter()
                     {
                         Topic = TOPIC_CONTROL_SWITCH_SET,
-                        QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce
-                    });
-                    topicFilters.Add(new TopicFilter()
-                    {
-                        Topic = TOPIC_CONTROL_SWITCH_STATE,
                         QualityOfServiceLevel = MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce
                     });
                     subscriptions.TopicFilters = topicFilters;
@@ -282,7 +267,7 @@ namespace icue2mqtt
         private void client_MqttMsgPublishReceived(MqttApplicationMessageReceivedEventArgs e)
         {
             string jsonMessage = Encoding.UTF8.GetString(e.ApplicationMessage.Payload, 0, e.ApplicationMessage.Payload.Length);
-
+            Console.WriteLine(e.ApplicationMessage.Topic);
             if (e.ApplicationMessage.Topic == MqttIcueDeviceList.TOPIC_ALL_DEVICE_STATE)
             {
                 SendStateUpdate(MqttIcueDeviceList.TOPIC_ALL_DEVICE_STATE, MqttIcueDeviceList.GetAllDeviceAverageState());
@@ -367,10 +352,12 @@ namespace icue2mqtt
                 {
                     SendStateUpdate(icueDevice);
                 }
+                SendStateUpdate(MqttIcueDeviceList.TOPIC_ALL_DEVICE_STATE, MqttIcueDeviceList.GetAllDeviceAverageState());
             }
             else
             {
                 IcueSdk.SetDeviceColor(mqttIcueDevice.IcueDevice, R, G, B);
+                SendStateUpdate(mqttIcueDevice);
             }
         }
 
