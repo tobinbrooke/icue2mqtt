@@ -47,7 +47,7 @@ namespace icue2mqtt.Models
             {
                 return null;
             }
-            string entityId = icueDevice.CorsairDevice.model.Replace(" ", "_");
+            string entityId = icueDevice.CorsairDevice.Model.Replace(" ", "_");
             if (suffixNumber > 0)
             {
                 entityId += "_" + suffixNumber;
@@ -60,7 +60,7 @@ namespace icue2mqtt.Models
             {
                 for (int i = 0; i < devices.Count; i++)
                 {
-                    if (devices[i].IcueDevice.CorsairDevice.model.Equals(mqttIcueDevice.IcueDevice.CorsairDevice.model) && suffixNumber == devices[i].SuffixNumber)
+                    if (devices[i].IcueDevice.CorsairDevice.Model.Equals(mqttIcueDevice.IcueDevice.CorsairDevice.Model) && suffixNumber == devices[i].SuffixNumber)
                     {
                         devices[i] = mqttIcueDevice;
                         icueDevices[i] = icueDevice;

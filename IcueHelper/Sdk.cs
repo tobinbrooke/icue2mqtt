@@ -1,7 +1,8 @@
-﻿using Corsair.CUE.SDK;
+﻿using CUESDK;
 using IcueHelper.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace IcueHelper
@@ -40,9 +41,9 @@ namespace IcueHelper
 
         private void initialiseSdk(bool exclusiveLightingControl)
         {
-            ProtocolDetails = CUESDK.CorsairPerformProtocolHandshake();
+            ProtocolDetails = CorsairLightingSDK.PerformProtocolHandshake();
 
-            if (ProtocolDetails.serverProtocolVersion == 0)
+            if (ProtocolDetails.ServerProtocolVersion == 0)
             {
                 if (!HandleError())
                 {
@@ -53,17 +54,17 @@ namespace IcueHelper
                 }
             }
 
-            if (ProtocolDetails.breakingChanges)
+            if (ProtocolDetails.BreakingChanges)
             {
-                String sdkVersion = ProtocolDetails.sdkVersion;
-                String cueVersion = ProtocolDetails.serverVersion;
+                String sdkVersion = ProtocolDetails.SdkVersion;
+                String cueVersion = ProtocolDetails.ServerVersion;
                 throw new Exception("Incompatible SDK (" + sdkVersion + ") and CUE " + cueVersion + " versions.");
             }
 
 
             if (exclusiveLightingControl)
             {
-                CUESDK.CorsairRequestControl(CorsairAccessMode.CAM_ExclusiveLightingControl);
+                CorsairLightingSDK.RequestControl(CorsairAccessMode.ExclusiveLightingControl);
                 HasExclusiveLightingControl = true;
             }
 
@@ -75,19 +76,19 @@ namespace IcueHelper
         /// <returns></returns>
         public Device[] ListDevices()
         {
-            int deviceCount = CUESDK.CorsairGetDeviceCount();
+            int deviceCount = CorsairLightingSDK.GetDeviceCount();
 
             if (deviceCount > 0)
             {
                 Device[] devices = new Device[deviceCount];
                 for (int i = 0; i < deviceCount; i++)
                 {
-                    CorsairDeviceInfo deviceInfo = CUESDK.CorsairGetDeviceInfo(i);
+                    CorsairDeviceInfo deviceInfo = CorsairLightingSDK.GetDeviceInfo(i);
                     CorsairLedPositions positions = GetLedPositions(i);
                     List<Led> leds = new List<Led>();
-                    for (int j = 0; j < positions.pLedPosition.Length; j++)
+                    for (int j = 0; j < positions.LedPosition.Length; j++)
                     {
-                        leds.Add(new Led(positions.pLedPosition[j]));
+                        leds.Add(new Led(positions.LedPosition[j]));
                     }
                     devices[i] = new Device(deviceInfo, i, leds);
                     RefreshDeviceColor(devices[i]);
@@ -104,7 +105,7 @@ namespace IcueHelper
         /// <returns></returns>
         private CorsairLedPositions GetLedPositions(int deviceIndex)
         {
-            return CUESDK.CorsairGetLedPositionsByDeviceIndex(deviceIndex);
+            return CorsairLightingSDK.GetLedPositionsByDeviceIndex(deviceIndex);
         }
 
         /// <summary>
@@ -114,8 +115,18 @@ namespace IcueHelper
         /// <returns></returns>
         public bool RefreshDeviceColor(Device device)
         {
-            bool result = CUESDK.CorsairGetLedsColorsByDeviceIndex(device.DeviceIndex, device.Leds.Count, device.Leds.ToArray());
-            device.CalculateAverageColor();
+            CorsairLedColor[] leds = device.Leds.Select(x => x.CorsairLedColor).ToArray();
+            bool result = CorsairLightingSDK.GetLedsColorsByDeviceIndex(device.DeviceIndex, ref leds);
+            if (result)
+            {
+                for (int i = 0; i < leds.Length; i++)
+                {
+                    device.Leds[i].R = leds[i].R;
+                    device.Leds[i].G = leds[i].G;
+                    device.Leds[i].B = leds[i].B;
+                }
+                device.CalculateAverageColor();
+            }
             return result;
         }
 
@@ -130,10 +141,11 @@ namespace IcueHelper
         public bool SetDeviceColor(Device device, int r, int g, int b)
         {
             device.SetColor(r, g, b);
-            bool setResult = CUESDK.CorsairSetLedsColorsBufferByDeviceIndex(device.DeviceIndex, device.Leds.Count, device.Leds.ToArray());
+            CorsairLedColor[] leds = device.Leds.Select(x => x.CorsairLedColor).ToArray();
+            bool setResult = CorsairLightingSDK.SetLedsColorsBufferByDeviceIndex(device.DeviceIndex, leds);
             if (setResult)
             {
-                return CUESDK.CorsairSetLedsColorsFlushBuffer();
+                return CorsairLightingSDK.SetLedsColorsFlushBuffer();
             }
             
             return false;
@@ -160,13 +172,14 @@ namespace IcueHelper
             for (int i = 0; i < devices.Length; i++)
             {
                 devices[i].SetColor(r, g, b);
-                bool setResult = CUESDK.CorsairSetLedsColorsBufferByDeviceIndex(devices[i].DeviceIndex, devices[i].Leds.Count, devices[i].Leds.ToArray());
+                CorsairLedColor[] leds = devices[i].Leds.Select(x => x.CorsairLedColor).ToArray();
+                bool setResult = CorsairLightingSDK.SetLedsColorsBufferByDeviceIndex(devices[i].DeviceIndex, leds);
                 if (!setResult)
                 {
                     return false;
                 }
             }
-            return CUESDK.CorsairSetLedsColorsFlushBuffer();
+            return CorsairLightingSDK.SetLedsColorsFlushBuffer();
         }
 
         /// <summary>
@@ -175,12 +188,12 @@ namespace IcueHelper
         /// <exception cref="Exception"></exception>
         private bool HandleError()
         {
-            CorsairError error = CUESDK.CorsairGetLastError();
-            if (error == CorsairError.CE_ServerNotFound)
+            CorsairError error = CorsairLightingSDK.GetLastError();
+            if (error == CorsairError.ServerNotFound)
             {
                 return false;
             }
-            else if (error != CorsairError.CE_Success)
+            else if (error != CorsairError.Success)
             {
                 throw new Exception(error + "");
             }
@@ -189,7 +202,7 @@ namespace IcueHelper
 
         public CorsairError CorsairGetLastError()
         {
-            return CUESDK.CorsairGetLastError();
+            return CorsairLightingSDK.GetLastError();
         }
 
         /// <summary>
@@ -198,7 +211,7 @@ namespace IcueHelper
         /// <param name="priority"></param>
         public void SetLayerPriority(int priority)
         {
-            CUESDK.CorsairSetLayerPriority(priority);
+            CorsairLightingSDK.SetLayerPriority(priority);
         }
 
         /// <summary>
@@ -208,7 +221,7 @@ namespace IcueHelper
         {
             if (HasExclusiveLightingControl)
             {
-                CUESDK.CorsairReleaseControl(CorsairAccessMode.CAM_ExclusiveLightingControl);
+                CorsairLightingSDK.ReleaseControl(CorsairAccessMode.ExclusiveLightingControl);
             }
         }
     }

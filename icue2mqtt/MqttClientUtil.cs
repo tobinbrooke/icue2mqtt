@@ -1,4 +1,4 @@
-﻿using Corsair.CUE.SDK;
+﻿using CUESDK;
 using icue2mqtt.Models;
 using IcueHelper;
 using IcueHelper.Models;
@@ -158,7 +158,7 @@ namespace icue2mqtt
                     MqttIcueDevice mqttIcueDevice = MqttIcueDeviceList.GetDevices()[i];
                     if (mqttIcueDevice != null)
                     {
-                        Logger.LogInformation(String.Format("Publishing device {0}", mqttIcueDevice.IcueDevice.CorsairDevice.model));
+                        Logger.LogInformation(String.Format("Publishing device {0}", mqttIcueDevice.IcueDevice.CorsairDevice.Model));
                         MqttClientSubscribeOptions subscriptions = new MqttClientSubscribeOptions();
                         List<TopicFilter> topicFilters = new List<TopicFilter>();
                         topicFilters.Add(new TopicFilter()
@@ -237,7 +237,7 @@ namespace icue2mqtt
         {
             Device[] devices = IcueSdk.ListDevices(); 
             CorsairError error = IcueSdk.CorsairGetLastError();
-            if (error != CorsairError.CE_Success)
+            if (error != CorsairError.Success)
             {
                 Logger.LogError("SDK error getting list of devices", new Exception(error.ToString()));
             }
@@ -246,14 +246,14 @@ namespace icue2mqtt
             {
                 //handle multiple devices of same model
                 int modelSuffix = 0;
-                if (modelCount.ContainsKey(devices[i].CorsairDevice.model))
+                if (modelCount.ContainsKey(devices[i].CorsairDevice.Model))
                 {
-                    modelSuffix = modelCount[devices[i].CorsairDevice.model] + 1;
-                    modelCount[devices[i].CorsairDevice.model] = modelSuffix;
+                    modelSuffix = modelCount[devices[i].CorsairDevice.Model] + 1;
+                    modelCount[devices[i].CorsairDevice.Model] = modelSuffix;
                 }
                 else
                 {
-                    modelCount.Add(devices[i].CorsairDevice.model, modelSuffix);
+                    modelCount.Add(devices[i].CorsairDevice.Model, modelSuffix);
                 }
                 MqttIcueDeviceList.AddIcueDevice(devices[i], modelSuffix);
             }
@@ -297,7 +297,7 @@ namespace icue2mqtt
                     {
                         SetState(mqttIcueDevice, isSetAllDevices);
                         CorsairError error = IcueSdk.CorsairGetLastError();
-                        if (error != CorsairError.CE_Success)
+                        if (error != CorsairError.Success)
                         {
                             Logger.LogError("SDK error setting device to ON", new Exception(error.ToString()));
                         }
@@ -307,7 +307,7 @@ namespace icue2mqtt
                         mqttIcueDevice.SetOffState();
                         SetState(mqttIcueDevice, isSetAllDevices, 0, 0, 0);
                         CorsairError error = IcueSdk.CorsairGetLastError();
-                        if (error != CorsairError.CE_Success)
+                        if (error != CorsairError.Success)
                         {
                             Logger.LogError("SDK error setting device to OFF", new Exception(error.ToString()));
                         }
@@ -318,7 +318,7 @@ namespace icue2mqtt
                 {
                     SetState(mqttIcueDevice, isSetAllDevices, state.Color.R, state.Color.G, state.Color.B);
                     CorsairError error = IcueSdk.CorsairGetLastError();
-                    if (error != CorsairError.CE_Success)
+                    if (error != CorsairError.Success)
                     {
                         Logger.LogError("SDK error setting device color", new Exception(error.ToString()));
                     }

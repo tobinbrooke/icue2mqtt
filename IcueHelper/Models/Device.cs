@@ -1,4 +1,4 @@
-﻿using Corsair.CUE.SDK;
+﻿using CUESDK;
 using System.Collections.Generic;
 
 namespace IcueHelper.Models
@@ -79,9 +79,9 @@ namespace IcueHelper.Models
             this.B = b;
             foreach (Led led in Leds)
             {
-                led.r = r;
-                led.g = g;
-                led.b = b;
+                led.R = r;
+                led.G = g;
+                led.B = b;
             }
         }
 
@@ -102,9 +102,9 @@ namespace IcueHelper.Models
             int b = 0;
             foreach (Led led in Leds)
             {
-                r += led.r;
-                g += led.g;
-                b += led.b;
+                r += led.R;
+                g += led.G;
+                b += led.B;
             }
             this.R = r / Leds.Count;
             this.G = g / Leds.Count;
@@ -119,7 +119,7 @@ namespace IcueHelper.Models
         /// </returns>
         public override string ToString()
         {
-            return CorsairDevice != null? CorsairDevice.model: base.ToString();
+            return this.CorsairDevice.DeviceId != null? CorsairDevice.Model: base.ToString();
         }
     }
 }

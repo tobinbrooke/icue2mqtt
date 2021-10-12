@@ -1,4 +1,5 @@
-﻿using Corsair.CUE.SDK;
+﻿
+using CUESDK;
 
 namespace IcueHelper.Models
 {
@@ -6,8 +7,26 @@ namespace IcueHelper.Models
     /// class representing a single icue LED controlled by the SDK
     /// </summary>
     /// <seealso cref="Corsair.CUE.SDK.CorsairLedColor" />
-    public class Led: CorsairLedColor
+    public class Led
     {
+
+        //
+        // Summary:
+        //     Identifier of LED to set.
+        public CorsairLedId LedId { get; set; }
+        //
+        // Summary:
+        //     Red brightness [0..255].
+        public int R { get; set; }
+        //
+        // Summary:
+        //     Green brightness [0..255].
+        public int G { get; set; }
+        //
+        // Summary:
+        //     Blue brightness [0..255].
+        public int B { get; set; }
+
         /// <summary>
         /// Gets the led position.
         /// </summary>
@@ -23,10 +42,23 @@ namespace IcueHelper.Models
         internal Led(CorsairLedPosition ledPosition) : base()
         {
             LedPosition = ledPosition;
-            this.ledId = ledPosition.ledId;
-            this.r = 0;
-            this.g = 0;
-            this.b = 0;
+            this.LedId = ledPosition.LedId;
+            this.R = 0;
+            this.G = 0;
+            this.B = 0;
+        }
+
+        public CorsairLedColor CorsairLedColor
+        {
+            get
+            {
+                CorsairLedColor result = new CorsairLedColor();
+                result.R = this.R;
+                result.G = this.G;
+                result.B = this.B;
+                result.LedId = this.LedId;
+                return result;
+            }
         }
 
     }

@@ -99,7 +99,7 @@ namespace icue2mqtt.Models
             this.LastG = icueDevice.G;
             this.LastB = icueDevice.B;
             this.SuffixNumber = suffixNumber;
-            this.Discovery = new MqttIcueDeviceDiscovery(icueDevice.CorsairDevice.model, stateTopic, commandTopic, suffixNumber);
+            this.Discovery = new MqttIcueDeviceDiscovery(icueDevice.CorsairDevice.Model, stateTopic, commandTopic, suffixNumber);
 
         }
 
