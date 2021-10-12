@@ -51,11 +51,12 @@ Discovered devices will be listed under integrations>MQTT:<IP> Each iCUE device 
 * When getting the state, the color returned for a device is the average values for R, G, B across all the LEDs on the device as iCUE LEs might all have different colors
 * Designed to control an entire device, setting a unified color not able to control each LED individually.
 
+* v 1.0.1
+  Updated to new SDK now controls fans with greater LED density
+  
 *TODO*
 
-* Allow Home Assistant to relinquish control to iCUE software
 * Profile switching using unoficial games SDK
-* More error logging
 * Add self installing banaries
 
 *Suggestions*
