@@ -47,7 +47,7 @@ namespace icue2mqtt.Models
             {
                 return null;
             }
-            string entityId = icueDevice.CorsairDevice.Model.Replace(" ", "_");
+            string entityId = icueDevice.CorsairDevice.Model.Replace(" ", "_").Replace(":", "_");
             if (suffixNumber > 0)
             {
                 entityId += "_" + suffixNumber;
