@@ -56,7 +56,7 @@ Discovered devices will be listed under integrations>MQTT:<IP> Each iCUE device 
   
 *TODO*
 
-* Profile switching using unoficial games SDK
+* Profile switching using unofficial games SDK
 * Add self installing banaries
 
 *Suggestions*
