@@ -12,7 +12,7 @@ A C# .NET core Windows service, allowing Home Assistant to discover and control 
 
 *Installing*
 
-there is currently no installers. The repository will need to be cloned and built/installed manually:
+there are currently no installers. The repository will need to be cloned and built/installed manually:
 * Run PowerShell as administrator
 * CD to the icue2mqtt directory of the cloned repository
 * Run "dotnet publish -r win-x64 -c Release"
@@ -29,6 +29,10 @@ there is currently no installers. The repository will need to be cloned and buil
 * Start the service
 * click Apply
 * Click OK
+
+*optional properties.json*
+
+If using non-default MQTT broker add the JSON property mqttOverridePort with the port number
 
 *Home Assistant*
 
