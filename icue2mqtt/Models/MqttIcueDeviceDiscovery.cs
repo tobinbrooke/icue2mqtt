@@ -1,8 +1,9 @@
 ﻿using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace icue2mqtt.Models
 {
-    internal class MqttIcueDeviceDiscovery: JsonConvertableBase
+    internal class MqttIcueDeviceDiscovery : JsonConvertableBase
     {
         [JsonProperty("name")]
         public string Name { get; set; }
@@ -22,8 +23,8 @@ namespace icue2mqtt.Models
         [JsonProperty("schema")]
         public string Schema { get; private set; } = "json";
 
-        [JsonProperty("rgb")]
-        public bool Rgb { get; set; } = true;
+        [JsonProperty("supported_color_modes")]
+        public List<string> SupportedColorModes { get; private set; }
 
         [JsonProperty("optimistic")]
         public bool Optimisitic { get; private set; } = false;
@@ -42,8 +43,8 @@ namespace icue2mqtt.Models
             }
             this.StateTopic = stateTopic;
             this.CommandTopic = commandTopic;
+            this.SupportedColorModes = new List<string> { "rgb" };
         }
-
 
         internal MqttIcueDeviceDiscovery(string name, string stateTopic, string commandTopic, int suffixNumber, bool isSwitch)
         {
@@ -56,11 +57,7 @@ namespace icue2mqtt.Models
             }
             this.StateTopic = stateTopic;
             this.CommandTopic = commandTopic;
-            if (isSwitch)
-            {
-                Rgb = false;
-            }
+            this.SupportedColorModes = isSwitch ? new List<string>() : new List<string> { "rgb" };
         }
-
     }
 }

@@ -1,6 +1,6 @@
 {
   "logPath": "C:\\temp\\servicelog.txt",
-  "mqttCredentialsPwd": "Toto00291",
-  "mqttCredentialsUser": "valetudo",
-  "mqttUrl": "192.168.1.31"
+  "mqttCredentialsPwd": "jatvid-dazmYd-6nyxte",
+  "mqttCredentialsUser": "mqttuser",
+  "mqttUrl": "homeassistant.local"
 }
