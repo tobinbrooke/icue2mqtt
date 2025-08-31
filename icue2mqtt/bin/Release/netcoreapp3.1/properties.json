@@ -1,6 +1,0 @@
-{
-  "logPath": "C:\\temp\\servicelog.txt",
-  "mqttCredentialsPwd": "jatvid-dazmYd-6nyxte",
-  "mqttCredentialsUser": "mqttuser",
-  "mqttUrl": "homeassistant.local"
-}
