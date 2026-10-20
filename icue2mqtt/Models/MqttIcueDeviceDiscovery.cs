@@ -26,6 +26,18 @@ namespace icue2mqtt.Models
         [JsonProperty("supported_color_modes")]
         public List<string> SupportedColorModes { get; private set; }
 
+        /// <summary>
+        /// Tells Home Assistant that the light has a brightness, sent separately from the RGB color.
+        /// </summary>
+        [JsonProperty("brightness")]
+        public bool Brightness { get; private set; } = true;
+
+        /// <summary>
+        /// Brightness range used on the wire: 0 to 255.
+        /// </summary>
+        [JsonProperty("brightness_scale")]
+        public int BrightnessScale { get; private set; } = 255;
+
         [JsonProperty("optimistic")]
         public bool Optimisitic { get; private set; } = false;
 
@@ -58,6 +70,7 @@ namespace icue2mqtt.Models
             this.StateTopic = stateTopic;
             this.CommandTopic = commandTopic;
             this.SupportedColorModes = isSwitch ? new List<string>() : new List<string> { "rgb" };
+            this.Brightness = !isSwitch;
         }
     }
 }

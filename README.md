@@ -34,10 +34,17 @@ there are currently no installers. The repository will need to be cloned and bui
 
 If using non-default MQTT broker add the JSON property mqttOverridePort with the port number
 
+*Updating / quick redeploy*
+
+Once the service is installed, `deploy.cmd` (or `deploy.ps1`) at the root of the repository rebuilds the project and redeploys it in one step: it publishes to a temporary folder, stops the service, empties the deployment folder (default `C:\MQTT`) while keeping your `properties.json`, copies the new build and restarts the service. It asks for administrator rights by itself.
+* `deploy.cmd -Pull` runs `git pull --ff-only` first
+* `.\deploy.ps1 -Destination D:\icue2mqttRelease -ServiceName icue2mqttService` to use another folder or service name
+
 *Home Assistant*
 
 You will need a MQTT broker. This has been tested with Mosquitto broker on Hass.io
 Discovered devices will be listed under integrations>MQTT:<IP> Each iCUE device will be named with the device type and have the entity ID of light.device_type_with_spaces_as_underscores.
+Each light has a color and a brightness (0-255) that can be changed independently. The color and brightness are remembered when the light is turned off and restored when it is turned back on.
   
 ![](images/icueLightInHA.png)
 

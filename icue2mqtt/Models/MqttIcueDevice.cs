@@ -48,31 +48,13 @@ namespace icue2mqtt.Models
         internal MqttIcueDeviceDiscovery Discovery { get; private set; }
 
         /// <summary>
-        /// Gets the last known r color value.
-        /// Used for restoring color when turning the device back on
+        /// Gets the colour (at full intensity) and brightness of the light.
+        /// They are kept when the light is turned off, so they can be restored when turning it back on.
         /// </summary>
         /// <value>
-        /// The last r.
+        /// The level.
         /// </value>
-        internal int LastR { get; private set; }
-
-        /// <summary>
-        /// Gets the last known g color value.
-        /// Used for restoring color when turning the device back on
-        /// </summary>
-        /// <value>
-        /// The last g.
-        /// </value>
-        internal int LastG { get; private set; }
-
-        /// <summary>
-        /// Gets the last known r color value.
-        /// Used for restoring color when turning the device back on
-        /// </summary>
-        /// <value>
-        /// The last b.
-        /// </value>
-        internal int LastB { get; private set; }
+        internal MqttLightLevel Level { get; private set; }
 
         /// <summary>
         /// Gets the suffix number used for tracking if more than one device of model exists.
@@ -95,22 +77,28 @@ namespace icue2mqtt.Models
             this.StateTopic = stateTopic;
             this.CommandTopic = commandTopic;
             this.DiscoveryTopic = discoveryTopic;
-            this.LastR = icueDevice.R;
-            this.LastG = icueDevice.G;
-            this.LastB = icueDevice.B;
+            this.Level = new MqttLightLevel(icueDevice.R, icueDevice.G, icueDevice.B);
             this.SuffixNumber = suffixNumber;
             this.Discovery = new MqttIcueDeviceDiscovery(icueDevice.CorsairDevice.Model, stateTopic, commandTopic, suffixNumber);
 
         }
 
         /// <summary>
-        /// Sets the last color values when turning LEDS off.
+        /// Applies a command received over MQTT: turns the device off, or on with the requested
+        /// colour and/or brightness (the ones not specified are left unchanged).
         /// </summary>
-        internal void SetOffState()
+        /// <param name="sdk">The icue SDK.</param>
+        /// <param name="command">The command.</param>
+        internal void ApplyCommand(IcueHelper.Sdk sdk, MqttIcueDeviceState command)
         {
-            this.LastR = IcueDevice.R;
-            this.LastG = IcueDevice.G;
-            this.LastB = IcueDevice.B;
+            if (command.IsOffCommand())
+            {
+                sdk.SetDeviceColor(IcueDevice, 0, 0, 0);
+                return;
+            }
+            Level.Update(command.Color, command.Brightness);
+            MqttColor output = Level.GetOutputColor();
+            sdk.SetDeviceColor(IcueDevice, output.R, output.G, output.B);
         }
 
         /// <summary>
@@ -119,7 +107,10 @@ namespace icue2mqtt.Models
         /// <returns></returns>
         internal MqttIcueDeviceState GetState()
         {
-            return new MqttIcueDeviceState(IcueDevice);
+            bool isOn = IcueDevice.R > 0 || IcueDevice.G > 0 || IcueDevice.B > 0;
+            return isOn
+                ? MqttIcueDeviceState.On(Level.GetBaseColor(), Level.Brightness)
+                : MqttIcueDeviceState.Off();
         }
     }
 }

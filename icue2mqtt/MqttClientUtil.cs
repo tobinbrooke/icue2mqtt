@@ -301,38 +301,17 @@ namespace icue2mqtt
             mqttIcueDevice = MqttIcueDeviceList.GetDeviceBySetTopic(e.ApplicationMessage.Topic);
             if (mqttIcueDevice != null || isSetAllDevices)
             {
-                MqttIcueDeviceState state = JsonConvert.DeserializeObject<MqttIcueDeviceState>(jsonMessage);
-                if (state.Color == null)
+                // The command can contain a state (ON/OFF), a color, a brightness or any combination of them
+                MqttIcueDeviceState command = JsonConvert.DeserializeObject<MqttIcueDeviceState>(jsonMessage);
+                if (command == null)
                 {
-                    if (state.State.Equals("ON"))
-                    {
-                        SetState(mqttIcueDevice, isSetAllDevices);
-                        CorsairError error = IcueSdk.CorsairGetLastError();
-                        if (error != CorsairError.Success)
-                        {
-                            Logger.LogError("SDK error setting device to ON", new Exception(error.ToString()));
-                        }
-                    }
-                    else
-                    {
-                        mqttIcueDevice.SetOffState();
-                        SetState(mqttIcueDevice, isSetAllDevices, 0, 0, 0);
-                        CorsairError error = IcueSdk.CorsairGetLastError();
-                        if (error != CorsairError.Success)
-                        {
-                            Logger.LogError("SDK error setting device to OFF", new Exception(error.ToString()));
-                        }
-                    }
                     return Task.CompletedTask;
                 }
-                else
+                ApplyCommand(mqttIcueDevice, isSetAllDevices, command);
+                CorsairError error = IcueSdk.CorsairGetLastError();
+                if (error != CorsairError.Success)
                 {
-                    SetState(mqttIcueDevice, isSetAllDevices, state.Color.R, state.Color.G, state.Color.B);
-                    CorsairError error = IcueSdk.CorsairGetLastError();
-                    if (error != CorsairError.Success)
-                    {
-                        Logger.LogError("SDK error setting device color", new Exception(error.ToString()));
-                    }
+                    Logger.LogError("SDK error applying command to device", new Exception(error.ToString()));
                 }
                 return Task.CompletedTask;
             }
@@ -355,12 +334,23 @@ namespace icue2mqtt
             return Task.CompletedTask;
         }
 
-        private void SetState(MqttIcueDevice mqttIcueDevice, bool isAllDevices, int R, int G, int B)
+        /// <summary>
+        /// Applies a command (state, color and/or brightness) to one device or to all the devices,
+        /// then publishes the new state(s).
+        /// </summary>
+        /// <param name="mqttIcueDevice">The device, ignored when <paramref name="isAllDevices"/> is true.</param>
+        /// <param name="isAllDevices">if set to <c>true</c> the command is applied to all the devices.</param>
+        /// <param name="command">The command received over MQTT.</param>
+        private void ApplyCommand(MqttIcueDevice mqttIcueDevice, bool isAllDevices, MqttIcueDeviceState command)
         {
             if (isAllDevices)
             {
-                MqttIcueDeviceList.SetAllDeviceState(IcueSdk, R, G, B);
-                foreach(MqttIcueDevice icueDevice in MqttIcueDeviceList.GetDevices())
+                MqttIcueDevice[] allDevices = MqttIcueDeviceList.GetDevices();
+                foreach (MqttIcueDevice icueDevice in allDevices)
+                {
+                    icueDevice.ApplyCommand(IcueSdk, command);
+                }
+                foreach (MqttIcueDevice icueDevice in allDevices)
                 {
                     SendStateUpdate(icueDevice);
                 }
@@ -368,20 +358,8 @@ namespace icue2mqtt
             }
             else
             {
-                IcueSdk.SetDeviceColor(mqttIcueDevice.IcueDevice, R, G, B);
+                mqttIcueDevice.ApplyCommand(IcueSdk, command);
                 SendStateUpdate(mqttIcueDevice);
-            }
-        }
-
-        private void SetState(MqttIcueDevice mqttIcueDevice, bool isAllDevices)
-        {
-            if (isAllDevices)
-            {
-                SetState(mqttIcueDevice, isAllDevices, MqttIcueDeviceList.LastAverageR, MqttIcueDeviceList.LastAverageG, MqttIcueDeviceList.LastAverageB);
-            }
-            else
-            {
-                SetState(mqttIcueDevice, isAllDevices, mqttIcueDevice.LastR, mqttIcueDevice.LastG, mqttIcueDevice.LastB);
             }
         }
 

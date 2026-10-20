@@ -28,14 +28,6 @@ namespace icue2mqtt.Models
         /// </summary>
         private static readonly Dictionary<string, MqttIcueDevice> stateTopicDeviceMap = new Dictionary<string, MqttIcueDevice>();
 
-        private static readonly List<Device> icueDevices = new List<Device>();
-
-        internal static int LastAverageR { get; set; }
-
-        internal static int LastAverageG { get; set; }
-
-        internal static int LastAverageB { get; set; }
-
         /// <summary>
         /// Adds the icue device. Sets the topics and create instances of MqttIcueDevice
         /// </summary>
@@ -63,7 +55,6 @@ namespace icue2mqtt.Models
                     if (devices[i].IcueDevice.CorsairDevice.Model.Equals(mqttIcueDevice.IcueDevice.CorsairDevice.Model) && suffixNumber == devices[i].SuffixNumber)
                     {
                         devices[i] = mqttIcueDevice;
-                        icueDevices[i] = icueDevice;
                         break;
                     }
                 }
@@ -73,7 +64,6 @@ namespace icue2mqtt.Models
             else
             {
                 devices.Add(mqttIcueDevice);
-                icueDevices.Add(icueDevice);
                 setTopicDeviceMap.Add(commandTopic, mqttIcueDevice);
                 stateTopicDeviceMap.Add(stateTopic, mqttIcueDevice);
             }
@@ -132,44 +122,31 @@ namespace icue2mqtt.Models
             return devices.ToArray();
         }
 
+        /// <summary>
+        /// Gets the state of the "all icue" entity: the average of the colors displayed by all the devices,
+        /// split into a full intensity color and a brightness.
+        /// </summary>
         internal static MqttIcueDeviceState GetAllDeviceAverageState()
         {
-            MqttIcueDeviceState result = new MqttIcueDeviceState();
             if (devices.Count == 0)
             {
-                result.State = "OFF";
+                return MqttIcueDeviceState.Off();
             }
-            else
+            int totalR = 0;
+            int totalG = 0;
+            int totalB = 0;
+            foreach (MqttIcueDevice device in devices)
             {
-                int totalR = 0;
-                int totalG = 0;
-                int totalB = 0;
-                foreach (MqttIcueDevice device in devices)
-                {
-                    totalR += device.IcueDevice.R;
-                    totalG += device.IcueDevice.G;
-                    totalB += device.IcueDevice.B;
-                }
-                LastAverageR = totalR / devices.Count;
-                LastAverageG = totalG / devices.Count;
-                LastAverageB  = totalB / devices.Count;
-                result.State = (LastAverageR > 0 || LastAverageG > 0 || LastAverageB > 0) ? "ON" : "OFF";
-                result.Color = new MqttColor(LastAverageR, LastAverageG, LastAverageB);
+                totalR += device.IcueDevice.R;
+                totalG += device.IcueDevice.G;
+                totalB += device.IcueDevice.B;
             }
-            return result;
+            return MqttIcueDeviceState.FromOutput(totalR / devices.Count, totalG / devices.Count, totalB / devices.Count);
         }
 
         internal static MqttIcueDeviceDiscovery GetAllDeviceDiscovery()
         {
             return new MqttIcueDeviceDiscovery("all icue", TOPIC_ALL_DEVICE_STATE, TOPIC_ALL_DEVICE_SET, 0);
-        }
-
-        internal static void SetAllDeviceState(IcueHelper.Sdk IcueSdk, int R, int G, int B)
-        {
-            LastAverageR = R;
-            LastAverageG = G;
-            LastAverageB = B;
-            IcueSdk.SetDeviceColor(icueDevices.ToArray(), R, G, B);
         }
     }
 }
